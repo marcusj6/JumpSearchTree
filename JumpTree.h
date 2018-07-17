@@ -1,8 +1,7 @@
-#pragma once
-#include "bptree.h"
-#include "../Simulation.h"
+#ifndef JUMP_TREE_H
+#define JUMP_TREE_H
 
-#include <string>
+#include "bptree.h"
 
 /*
  * JumpTree is a modification of a B- tree 
@@ -11,42 +10,40 @@
  * (see "Jump searching: a fast sequential search technique" by Ben Shneiderman).
  * Insert, delete, and search are all O(kn^(1/k)) amortized time complexity.
  */
-
-void JumpTreeInsert(BTree **tree, const Key *key, int k);
-void JumpTreeDelete(BTree **tree, const Key *key, int k);
-void JumpTreeRebuildOffline(BTree **tree, const Key *keys, const int k_num_keys, int k);
-
-class JumpTree : public MultidimensionalKeyDictionary {
-public:
-	JumpTree(int height = 2, int max_children = 4) : k(height), b(max_children){
-		if (max_children < 4)
-			b = 4;
-		if (height < 0)
-			k = 0;
-	}
-	~JumpTree() { if (tree != NULL) { BTreeFree(tree); } }
-
-	virtual void ConstructDictionary(const std::vector<Key>& keys) {
-		if (tree != NULL) {
-			BTreeFree(tree);
-		}
-		tree = BTreeInitM(b);
-		std::vector<Key> m_keys = keys;
-		sort(m_keys.begin(), m_keys.end(), [](Key k1, Key k2) { return k1.key < k2.key; });
-		JumpTreeRebuildOffline(&tree, &m_keys[0], m_keys.size(), k);//No reason to perform a ton of insertions
-	}
-
-	virtual inline int Search(const Key& q) { return BTreeFind(tree, &q); }
-	virtual std::string GetName() const { return "JumpTree "+std::to_string(k); }
-	virtual int TreeHeight() const { return BTreeHeight(tree); }
-	virtual void InsertKey(const Key& key) { JumpTreeInsert(&tree, &key, k); }
-	virtual void DeleteKey(const Key& key) { JumpTreeDelete(&tree, &key, k); }
-	virtual void Print() const {
-		BTreePrint(tree);
-	}
-
-private:
-	BTree *tree = NULL;
+ 
+typedef struct JumpTree{
+	struct BTree *internal_tree;
 	int k;
-	int b;
-};
+} JumpTree;
+
+static inline JumpTree * JumpTreeInit(){
+	JumpTree *tree =  (JumpTree *)malloc(sizeof(JumpTree));
+	tree->internal_tree = BTreeInit();
+	tree->k = 5;
+	return tree;
+}
+
+JumpTree * JumpTreeInitK(int k){
+	JumpTree *tree =  (JumpTree *)malloc(sizeof(JumpTree));
+	tree->internal_tree = BTreeInit();
+	tree->k = k;
+	return tree;
+}
+
+static inline void JumpTreeFree(JumpTree *tree){
+	BTreeFree(tree->internal_tree);
+	free(tree);
+}
+
+static inline int JumpTreeFind(JumpTree *tree, const Key *key){ return BTreeFind(tree->internal_tree, key); }
+static inline int JumpTreeSuccessor(JumpTree *tree, const Key *key){ return BTreeSuccessor(tree->internal_tree, key); }
+static inline int JumpTreePredecessor(JumpTree *tree, const Key *key){ return BTreePredecessor(tree->internal_tree, key); }
+static inline int JumpTreeHeight(JumpTree *tree){ return BTreeHeight(tree->internal_tree); }
+static inline void JumpTreePrint(JumpTree *tree){ BTreePrint(tree->internal_tree); }
+static inline double JumpTreeAverageNodeSize(JumpTree *tree){ return BTreeAverageNodeSize(tree->internal_tree);}
+
+bool JumpTreeInsert(JumpTree *tree, const Key *key);
+bool JumpTreeDelete(JumpTree *tree, const Key *key);
+void JumpTreeRebuildOffline(JumpTree *tree, const Key *keys, const int k_num_keys); //Assumes keys are already sorted
+
+#endif
